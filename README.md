@@ -1,5 +1,8 @@
 # Cal Booking
 
+### Hexlet tests and linter status:
+[![Actions Status](https://github.com/dmitanisimov/ai-for-developers-project-387/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/dmitanisimov/ai-for-developers-project-387/actions)
+
 Учебное production-like приложение для записи на звонок по мотивам Cal.com. Проект показывает полный цикл разработки с ИИ-агентами: Design First, API-контракт, раздельные frontend/backend приложения, тесты и Docker runtime.
 
 ## Что Умеет Приложение
