@@ -15,6 +15,8 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
   const availableSlot = page.locator(".slot-status-row:not(.booked)").first();
   await expect(availableSlot).toBeVisible({ timeout: 10_000 });
   const selectedSlotTime = await availableSlot.locator("span").innerText();
+  const selectedSlotStartTime = selectedSlotTime.split(" - ")[0];
+  await availableSlot.click();
 
   let bookingPageNavigations = 0;
   page.on("framenavigated", (frame) => {
@@ -30,6 +32,11 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
       page.evaluate(() => window.dispatchEvent(new Event("focus"))),
     ]);
   };
+
+  await triggerFocusRefresh();
+  await expect(page.locator(".selected-summary")).toContainText(selectedSlotStartTime);
+  await page.getByRole("button", { name: "К выбору времени" }).click();
+  await expect(page.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
 
   const visitorPage = await browser.newPage();
   await visitorPage.goto("/book");

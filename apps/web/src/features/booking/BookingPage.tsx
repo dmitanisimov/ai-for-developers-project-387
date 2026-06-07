@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, getErrorMessage } from "../../api/client";
 import type { EventType, Owner, Slot } from "../../api/types";
 import { SiteHeader } from "../../components/SiteHeader";
@@ -10,6 +10,7 @@ import { EventTypeStep } from "./EventTypeStep";
 const SLOT_REFRESH_INTERVAL_MS = 30_000;
 
 export const BookingPage = () => {
+  const slotRefreshInFlightRef = useRef(false);
   const [owner, setOwner] = useState<Owner | null>(null);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [allSlots, setAllSlots] = useState<Slot[]>([]);
@@ -52,6 +53,12 @@ export const BookingPage = () => {
 
     let active = true;
     const loadSlots = async (showLoader = false) => {
+      if (slotRefreshInFlightRef.current) {
+        return;
+      }
+
+      slotRefreshInFlightRef.current = true;
+
       if (showLoader) {
         setLoading(true);
       }
@@ -65,6 +72,8 @@ export const BookingPage = () => {
         if (!active) return;
         setError(getErrorMessage(requestError));
       } finally {
+        slotRefreshInFlightRef.current = false;
+
         if (active && showLoader) {
           setLoading(false);
         }
@@ -106,7 +115,11 @@ export const BookingPage = () => {
 
     setMonthSlotCounts(counts);
     setSlots(nextSlots);
-    setSelectedSlot((current) => (current && nextSlots.some((slot) => slot.startAt === current.startAt && slot.status !== "booked") ? current : null));
+    setSelectedSlot((current) => {
+      if (!current) return null;
+
+      return nextSlots.find((slot) => slot.startAt === current.startAt && slot.status !== "booked") ?? null;
+    });
   }, [allSlots, owner?.timezone, selectedDate]);
 
   const submitBooking = async (event: FormEvent) => {
