@@ -1,0 +1,119 @@
+name: lighthouse-report
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Start app
+        run: |
+          PORT=3000 \
+          APP_HOST=127.0.0.1 \
+          NODE_ENV=production \
+          DATABASE_URL=file:${{ runner.temp }}/cal-booking-lighthouse.sqlite \
+          ADMIN_EMAIL=admin@example.com \
+          ADMIN_PASSWORD=local-dev-password \
+          SESSION_SECRET=local-dev-session-secret \
+          npm start > ${{ runner.temp }}/cal-booking-lighthouse.log 2>&1 &
+
+      - name: Wait for healthcheck
+        run: |
+          node <<'NODE'
+          const healthUrl = "http://127.0.0.1:3000/api/health";
+          const deadline = Date.now() + 60_000;
+
+          while (Date.now() < deadline) {
+            try {
+              const response = await fetch(healthUrl);
+              if (response.ok) process.exit(0);
+            } catch {
+              // App is still starting.
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+
+          console.error(`Timed out waiting for ${healthUrl}`);
+          process.exit(1);
+          NODE
+
+      - name: Run Lighthouse
+        run: |
+          mkdir -p reports/lighthouse
+          npx --yes lighthouse http://127.0.0.1:3000/ --chrome-flags="--headless --no-sandbox" --output=json --output-path=reports/lighthouse/home.json
+          npx --yes lighthouse http://127.0.0.1:3000/ --chrome-flags="--headless --no-sandbox" --output=html --output-path=reports/lighthouse/home.html
+          npx --yes lighthouse http://127.0.0.1:3000/book --chrome-flags="--headless --no-sandbox" --output=json --output-path=reports/lighthouse/book.json
+          npx --yes lighthouse http://127.0.0.1:3000/book --chrome-flags="--headless --no-sandbox" --output=html --output-path=reports/lighthouse/book.html
+
+      - name: Generate summary
+        run: |
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = await import("node:fs");
+
+          const pages = [
+            ["Home", "reports/lighthouse/home.json", "home.html"],
+            ["Booking", "reports/lighthouse/book.json", "book.html"],
+          ];
+
+          const score = (category) => Math.round(category.score * 100);
+          const rows = pages.map(([name, jsonPath, htmlPath]) => {
+            const report = JSON.parse(readFileSync(jsonPath, "utf8"));
+            const categories = report.categories;
+            return {
+              name,
+              htmlPath,
+              performance: score(categories.performance),
+              accessibility: score(categories.accessibility),
+              bestPractices: score(categories["best-practices"]),
+              seo: score(categories.seo),
+            };
+          });
+
+          const needsAttention = rows.filter((row) => row.performance < 80 || row.accessibility < 90 || row.bestPractices < 90 || row.seo < 90);
+          const lines = [
+            "# Lighthouse Report",
+            "",
+            `Generated: ${new Date().toISOString()}`,
+            "",
+            "| Page | Performance | Accessibility | Best Practices | SEO | HTML report |",
+            "| --- | ---: | ---: | ---: | ---: | --- |",
+            ...rows.map((row) => `| ${row.name} | ${row.performance} | ${row.accessibility} | ${row.bestPractices} | ${row.seo} | ${row.htmlPath} |`),
+            "",
+            "## Follow-Up Candidates",
+            "",
+            ...(needsAttention.length > 0
+              ? needsAttention.map((row) => `- ${row.name}: review Lighthouse details and create follow-up issue if the score drop is expected to need code changes.`)
+              : ["- No immediate follow-up required by the configured score thresholds."]),
+            "",
+            "Download the `lighthouse-report` artifact from this workflow run to view full HTML reports.",
+          ];
+
+          const summary = `${lines.join("\n")}\n`;
+          writeFileSync("reports/lighthouse/summary.md", summary);
+          writeFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          NODE
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: reports/lighthouse
+          if-no-files-found: error
+          retention-days: 14
