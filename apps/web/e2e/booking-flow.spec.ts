@@ -23,6 +23,14 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
     }
   });
 
+  const triggerFocusRefresh = async () => {
+    await page.bringToFront();
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "GET" && response.url().includes("/api/public/event-types/") && response.url().includes("/slots?includeStatus=true")),
+      page.evaluate(() => window.dispatchEvent(new Event("focus"))),
+    ]);
+  };
+
   const visitorPage = await browser.newPage();
   await visitorPage.goto("/book");
   await expect(visitorPage.getByRole("button", { name: /Короткая консультация/ })).toBeVisible({ timeout: 10_000 });
@@ -38,7 +46,7 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
   await expect(visitorPage.getByRole("heading", { name: "Встреча забронирована" })).toBeVisible({ timeout: 10_000 });
   await expect(visitorPage.getByText(guestEmail)).toBeVisible();
 
-  await page.bringToFront();
+  await triggerFocusRefresh();
   await expect(page.locator(".slot-status-row.booked", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime })).toHaveCount(0);
 
@@ -58,7 +66,7 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
   await bookingRow.getByRole("button", { name: "Отменить" }).click();
   await expect(bookingRow).toContainText("cancelled");
 
-  await page.bringToFront();
+  await triggerFocusRefresh();
   await expect(page.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
   await expect(page.locator(".slot-status-row.booked", { hasText: selectedSlotTime })).toHaveCount(0);
   expect(bookingPageNavigations).toBe(0);
