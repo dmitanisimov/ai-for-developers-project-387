@@ -15,15 +15,32 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
   const availableSlot = page.locator(".slot-status-row:not(.booked)").first();
   await expect(availableSlot).toBeVisible({ timeout: 10_000 });
   const selectedSlotTime = await availableSlot.locator("span").innerText();
-  await availableSlot.click();
 
-  await page.getByLabel("Имя").fill("E2E Visitor");
-  await page.getByLabel("Email").fill(guestEmail);
-  await page.getByLabel("Комментарий").fill("Проверка полного flow");
-  await page.getByRole("button", { name: "Продолжить" }).click();
+  let bookingPageNavigations = 0;
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame()) {
+      bookingPageNavigations += 1;
+    }
+  });
 
-  await expect(page.getByRole("heading", { name: "Встреча забронирована" })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText(guestEmail)).toBeVisible();
+  const visitorPage = await browser.newPage();
+  await visitorPage.goto("/book");
+  await expect(visitorPage.getByRole("button", { name: /Короткая консультация/ })).toBeVisible({ timeout: 10_000 });
+  await visitorPage.getByRole("button", { name: /Короткая консультация/ }).click();
+  await visitorPage.locator(".calendar-day").nth(selectedDayIndex).click();
+  await visitorPage.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime }).click();
+
+  await visitorPage.getByLabel("Имя").fill("E2E Visitor");
+  await visitorPage.getByLabel("Email").fill(guestEmail);
+  await visitorPage.getByLabel("Комментарий").fill("Проверка полного flow");
+  await visitorPage.getByRole("button", { name: "Продолжить" }).click();
+
+  await expect(visitorPage.getByRole("heading", { name: "Встреча забронирована" })).toBeVisible({ timeout: 10_000 });
+  await expect(visitorPage.getByText(guestEmail)).toBeVisible();
+
+  await page.bringToFront();
+  await expect(page.locator(".slot-status-row.booked", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime })).toHaveCount(0);
 
   const adminPage = await browser.newPage();
   await adminPage.goto("/admin");
@@ -41,13 +58,13 @@ test("visitor books a slot and admin cancels it", async ({ browser, page }, test
   await bookingRow.getByRole("button", { name: "Отменить" }).click();
   await expect(bookingRow).toContainText("cancelled");
 
-  await adminPage.close();
-
   await page.bringToFront();
-  await page.goto("/book");
-  await page.getByRole("button", { name: /Короткая консультация/ }).click();
-  await page.locator(".calendar-day").nth(selectedDayIndex).click();
-  await expect(page.locator(".slot-status-row", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(".slot-status-row:not(.booked)", { hasText: selectedSlotTime })).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator(".slot-status-row.booked", { hasText: selectedSlotTime })).toHaveCount(0);
+  expect(bookingPageNavigations).toBe(0);
+
+  await adminPage.close();
+  await visitorPage.close();
 });
 
 test("anonymous admin route redirects to login", async ({ page }) => {
