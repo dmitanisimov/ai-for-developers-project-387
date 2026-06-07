@@ -24,7 +24,7 @@ export const BookingInfoCard = ({ owner, selectedDate, selectedEventType, select
     </div>
     <div className="selected-date-card">
       <span>Выбранное время</span>
-      <strong>{selectedSlot ? `${formatTime(selectedSlot.startAt)} - ${formatTime(selectedSlot.endAt)}` : "Время не выбрано"}</strong>
+      <strong>{selectedSlot ? `${formatTime(selectedSlot.startAt, owner?.timezone)} - ${formatTime(selectedSlot.endAt, owner?.timezone)}` : "Время не выбрано"}</strong>
     </div>
   </aside>
 );
