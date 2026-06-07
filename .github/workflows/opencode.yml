@@ -28,3 +28,4 @@ jobs:
           OPENCODE_CONFIG_CONTENT: '{"share":"manual"}'
         with:
           model: openai/gpt-5.4
+          prompt: ${{ github.event.comment.body || github.event.issue.body }}
