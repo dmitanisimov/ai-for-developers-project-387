@@ -1,9 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 const rootDir = resolve(import.meta.dirname, "../..");
 const port = Number(process.env.E2E_PORT || 4100);
-const databasePath = process.env.E2E_DATABASE_PATH || "/tmp/opencode/cal-booking-e2e.sqlite";
+const databasePath = process.env.E2E_DATABASE_PATH || resolve(tmpdir(), "cal-booking-e2e.sqlite");
 
 export default defineConfig({
   testDir: "./e2e",
