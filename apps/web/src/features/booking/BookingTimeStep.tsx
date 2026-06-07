@@ -33,8 +33,8 @@ export const BookingTimeStep = (props: BookingTimeStepProps) => (
 
     <div className="booking-step-grid">
       <BookingInfoCard owner={props.owner} selectedDate={props.selectedDate} selectedEventType={props.selectedEventType} selectedSlot={props.selectedSlot} />
-      <CalendarGrid monthSlotCounts={props.monthSlotCounts} selectedDate={props.selectedDate} onSelectDate={props.onSelectDate} />
-      <SlotStatusPanel {...props} />
+      <CalendarGrid monthSlotCounts={props.monthSlotCounts} selectedDate={props.selectedDate} timeZone={props.owner?.timezone} onSelectDate={props.onSelectDate} />
+      <SlotStatusPanel {...props} timeZone={props.owner?.timezone} />
     </div>
   </section>
 );

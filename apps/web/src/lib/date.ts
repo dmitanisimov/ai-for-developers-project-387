@@ -1,9 +1,39 @@
 export const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
+const dateKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+
+const getDateKeyFormatter = (timeZone: string) => {
+  const cached = dateKeyFormatters.get(timeZone);
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  dateKeyFormatters.set(timeZone, formatter);
+  return formatter;
+};
+
 export const toDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+export const toDateKeyInTimeZone = (date: Date, timeZone: string) => {
+  const parts = getDateKeyFormatter(timeZone).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    return toDateKey(date);
+  }
 
   return `${year}-${month}-${day}`;
 };
@@ -13,22 +43,24 @@ export const parseDateKey = (value: string) => {
   return new Date(year, month - 1, day);
 };
 
-export const today = () => toDateKey(new Date());
+export const today = (timeZone?: string) => (timeZone ? toDateKeyInTimeZone(new Date(), timeZone) : toDateKey(new Date()));
 
-export const bookingWindowEnd = () => {
-  const end = new Date();
+export const bookingWindowEnd = (timeZone?: string) => {
+  const end = parseDateKey(today(timeZone));
   end.setDate(end.getDate() + 13);
   return toDateKey(end);
 };
 
-export const formatDateTime = (value: string) =>
+export const formatDateTime = (value: string, timeZone?: string) =>
   new Intl.DateTimeFormat("ru-RU", {
+    ...(timeZone ? { timeZone } : {}),
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 
-export const formatTime = (value: string) =>
+export const formatTime = (value: string, timeZone?: string) =>
   new Intl.DateTimeFormat("ru-RU", {
+    ...(timeZone ? { timeZone } : {}),
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));

@@ -16,9 +16,10 @@ type SlotStatusPanelProps = {
   setGuestName: (value: string) => void;
   setGuestNotes: (value: string) => void;
   slots: Slot[];
+  timeZone?: string;
 };
 
-export const SlotStatusPanel = ({ error, guestEmail, guestName, guestNotes, loading, onBack, onSelectSlot, onSubmit, selectedSlot, setGuestEmail, setGuestName, setGuestNotes, slots }: SlotStatusPanelProps) => (
+export const SlotStatusPanel = ({ error, guestEmail, guestName, guestNotes, loading, onBack, onSelectSlot, onSubmit, selectedSlot, setGuestEmail, setGuestName, setGuestNotes, slots, timeZone }: SlotStatusPanelProps) => (
   <section className="slot-status-card" aria-label="Статус слотов">
     <div className="slot-status-heading">
       <h2>{selectedSlot ? "Данные для записи" : "Статус слотов"}</h2>
@@ -28,7 +29,7 @@ export const SlotStatusPanel = ({ error, guestEmail, guestName, guestNotes, load
     <form className="slot-form" onSubmit={onSubmit}>
       {selectedSlot ? (
         <>
-          <div className="selected-summary">Вы выбрали {formatDateTime(selectedSlot.startAt)}</div>
+          <div className="selected-summary">Вы выбрали {formatDateTime(selectedSlot.startAt, timeZone)}</div>
           <label className="field-label">
             Имя
             <input className="input" required value={guestName} onChange={(event) => setGuestName(event.target.value)} />
@@ -51,7 +52,7 @@ export const SlotStatusPanel = ({ error, guestEmail, guestName, guestNotes, load
             return (
               <button className={`slot-status-row${isBooked ? " booked" : ""}`} disabled={isBooked} key={slot.startAt} type="button" onClick={() => onSelectSlot(slot)}>
                 <span>
-                  {formatTime(slot.startAt)} - {formatTime(slot.endAt)}
+                  {formatTime(slot.startAt, timeZone)} - {formatTime(slot.endAt, timeZone)}
                 </span>
                 <strong>{isBooked ? "Занято" : "Свободно"}</strong>
               </button>

@@ -1,6 +1,6 @@
 import { bookingWindowEnd, buildCalendarDays, formatMonth, shiftMonth, today, weekdays } from "../../lib/date";
 
-export const CalendarGrid = ({ monthSlotCounts, selectedDate, onSelectDate }: { monthSlotCounts: Record<string, number>; selectedDate: string; onSelectDate: (date: string) => void }) => (
+export const CalendarGrid = ({ monthSlotCounts, selectedDate, timeZone, onSelectDate }: { monthSlotCounts: Record<string, number>; selectedDate: string; timeZone?: string; onSelectDate: (date: string) => void }) => (
   <section className="calendar-card" aria-label="Календарь">
     <div className="calendar-header">
       <h2>Календарь</h2>
@@ -21,7 +21,7 @@ export const CalendarGrid = ({ monthSlotCounts, selectedDate, onSelectDate }: { 
     </div>
     <div className="calendar-grid">
       {buildCalendarDays(selectedDate).map((day) => {
-        const disabled = day.date < today() || day.date > bookingWindowEnd();
+        const disabled = day.date < today(timeZone) || day.date > bookingWindowEnd(timeZone);
 
         return (
           <button
